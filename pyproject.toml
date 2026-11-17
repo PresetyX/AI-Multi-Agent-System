@@ -1,7 +1,7 @@
 [project]
 name = "ai-multi-agent-system"
 version = "0.1.0"
-description = "Production-ready LangGraph multi-agent system with safe tools and RAG."
+description = "Protótipo de sistema multi-agente em LangGraph: supervisor, workers, revisor e ferramentas com restrições."
 requires-python = ">=3.11"
 dependencies = [
   "langchain>=0.3.0",
@@ -12,9 +12,11 @@ dependencies = [
   "langgraph>=0.2.0",
   "pydantic>=2.8.0",
   "pydantic-settings>=2.4.0",
-  "pytest>=8.3.0",
   "python-dotenv>=1.0.1",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3.0", "pytest-cov>=5.0", "ruff>=0.5"]
 
 [build-system]
 requires = ["hatchling"]
@@ -26,3 +28,6 @@ packages = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff.lint]
+select = ["F"]

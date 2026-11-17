@@ -1,5 +1,6 @@
 """LangGraph workflow construction."""
 from langgraph.graph import END, START, StateGraph
+from src.config import get_settings
 from src.state import GraphState
 from src.agents.supervisor import supervisor_node
 from src.agents.software_engineer import software_engineer_node
@@ -13,7 +14,7 @@ def route_worker(state: GraphState) -> str:
 def route_review(state: GraphState) -> str:
     """Return terminal outcome, with a bounded fallback to supervisor."""
     if state.get("status") == "completed": return "done"
-    if state.get("review_loops", 0) < 2: return "retry"
+    if state.get("review_loops", 0) < get_settings().max_review_loops: return "retry"
     return "done"
 
 def build_graph():
