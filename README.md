@@ -139,6 +139,10 @@ tests/      # pytest (grafo, ferramentas, busca)
 - [ ] Trocar o `VectorStore` em memória por Chroma persistente com embeddings.
 - [ ] Executor de código dentro de container sem rede.
 
+## Histórico de desenvolvimento
+
+Projeto desenvolvido localmente entre 25/08/2026 e 17/11/2026. O histórico de commits foi criado depois, e as datas dos commits foram ajustadas para corresponder ao período em que o trabalho foi realmente feito.
+
 ## Licença
 
 MIT. Veja [LICENSE](LICENSE).
