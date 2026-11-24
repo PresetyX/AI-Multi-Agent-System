@@ -84,6 +84,24 @@ print(result["final_answer"])   # Prepared an analysis plan for: Analyze this CS
 
 O CI (GitHub Actions) roda lint com `ruff` e os testes em Python 3.11 e 3.12.
 
+## Decisões de design
+
+- **Supervisor por palavras-chave hoje, com LLM no roadmap.** O roteamento é determinístico e
+  testável sem chave de API. O limite é que ele só distingue o que as palavras-chave cobrem.
+- **Revisão com teto de tentativas.** O revisor devolve o pedido ao supervisor, mas
+  `route_review` sempre termina quando `MAX_REVIEW_LOOPS` é atingido, então o grafo não entra em
+  loop infinito.
+- **Estado tipado e serializável compartilhado** (`GraphState`): mensagens, worker ativo,
+  artefatos, status e contagem de revisões ficam num único lugar.
+- **Workers devolvem artefatos estruturados** (`engineering` ou `data_analysis`), e o revisor
+  aprova com base na existência do artefato, não em texto solto.
+- **Código gerado roda em subprocesso, em diretório temporário, com timeout e ambiente mínimo.**
+  Só `PATH` e `PYTHONNOUSERSITE` são repassados, para que chaves de API não vazem para o código
+  executado. Isso reduz risco, mas não é um sandbox, e o README diz isso de forma explícita.
+- **`file_ops` restrito ao `WORKSPACE_ROOT`,** bloqueando `../` e caminhos absolutos.
+- **`VectorStore` em memória, acessado só pelo recuperador** (`src/tools/retriever.py`), com a
+  troca por Chroma persistente prevista no roadmap.
+
 ## Limitações de segurança
 
 O executor de código **não é um sandbox isolado**. Ele reduz riscos (timeout, diretório
