@@ -1,57 +1,59 @@
+🌐 **English** | [Português (BR)](README.pt-BR.md)
+
 # AI Multi-Agent System
 
 [![CI](https://github.com/PresetyX/AI-Multi-Agent-System/actions/workflows/ci.yml/badge.svg)](https://github.com/PresetyX/AI-Multi-Agent-System/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Protótipo funcional da arquitetura de um sistema multi-agente em **LangGraph**: um
-supervisor classifica o pedido, delega para um agente especialista (engenharia de software ou
-análise de dados) e um revisor aprova o resultado ou devolve para nova tentativa, com limite
-de iterações. Inclui ferramentas com restrições de segurança (execução de código, arquivos e
-busca em documentos) e testes de ponta a ponta do grafo.
+Working prototype of a multi-agent system architecture in **LangGraph**: a supervisor
+classifies the request, delegates it to a specialist agent (software engineering or data
+analysis), and a reviewer either approves the result or sends it back for another attempt,
+with an iteration limit. It includes tools with security restrictions (code execution, files
+and document search) and end-to-end tests of the graph.
 
-> **Estado atual: protótipo.** O foco aqui é a orquestração (estado tipado, roteamento
-> condicional, loop de revisão limitado) e as ferramentas. Os nós dos agentes ainda são
-> **determinísticos**: o supervisor roteia por palavras-chave e os workers geram artefatos de
-> plano, sem chamar um LLM. Plugar o LLM em cada nó é o próximo passo (veja o roadmap).
+> **Current status: prototype.** The focus here is orchestration (typed state, conditional
+> routing, a bounded review loop) and the tools. The agent nodes are still
+> **deterministic**: the supervisor routes by keywords and the workers generate plan
+> artifacts, without calling an LLM. Plugging an LLM into each node is the next step (see the roadmap).
 
-## Arquitetura
+## Architecture
 
 ```mermaid
 graph TD
-  U[Pedido do usuário] --> S[Supervisor]
+  U[User request] --> S[Supervisor]
   S -->|software| E[Software Engineer]
-  S -->|dados| D[Data Analyst]
+  S -->|data| D[Data Analyst]
   E --> R[QA Reviewer]
   D --> R
-  R -->|sem artefato e abaixo do limite| S
-  R -->|aprovado ou limite atingido| F[Resposta final]
+  R -->|no artifact and below limit| S
+  R -->|approved or limit reached| F[Final answer]
 ```
 
 ```mermaid
 sequenceDiagram
-  participant C as Cliente
+  participant C as Client
   participant G as LangGraph
   participant W as Worker
   participant Q as Reviewer
   C->>G: invoke(messages)
-  G->>W: tarefa delegada pelo supervisor
-  W->>Q: artefato + resumo
-  Q-->>G: aprovado / revisar
-  G-->>C: estado final (status, artefatos, final_answer)
+  G->>W: task delegated by the supervisor
+  W->>Q: artifact + summary
+  Q-->>G: approved / revise
+  G-->>C: final state (status, artifacts, final_answer)
 ```
 
-| Componente | O que faz hoje |
+| Component | What it does today |
 |---|---|
-| `GraphState` | Estado tipado e serializável compartilhado entre os nós (mensagens, worker ativo, artefatos, status, contagem de revisões). |
-| Supervisor | Extrai a última mensagem do usuário e roteia por palavras-chave (`csv`, `dataset`, `data`, `statistics`...). |
-| Workers | Produzem um artefato estruturado (`engineering` ou `data_analysis`) com o plano para a tarefa. |
-| Reviewer | Aprova quando há artefato; senão devolve ao supervisor até `MAX_REVIEW_LOOPS`. |
-| `execute_python` | Executa código em subprocesso, em diretório temporário, com timeout e ambiente mínimo (sem herdar variáveis como chaves de API). |
-| `file_ops` | Leitura e escrita restritas ao `WORKSPACE_ROOT`, bloqueando path traversal (`../`, caminhos absolutos). |
-| `VectorStore` | Índice em memória com busca por sobreposição de termos; interface pronta para trocar por Chroma. |
+| `GraphState` | Typed, serializable state shared between the nodes (messages, active worker, artifacts, status, revision count). |
+| Supervisor | Extracts the latest user message and routes by keywords (`csv`, `dataset`, `data`, `statistics`...). |
+| Workers | Produce a structured artifact (`engineering` or `data_analysis`) with the plan for the task. |
+| Reviewer | Approves when there is an artifact; otherwise sends it back to the supervisor up to `MAX_REVIEW_LOOPS`. |
+| `execute_python` | Runs code in a subprocess, in a temporary directory, with a timeout and a minimal environment (it does not inherit variables such as API keys). |
+| `file_ops` | Reads and writes restricted to `WORKSPACE_ROOT`, blocking path traversal (`../`, absolute paths). |
+| `VectorStore` | In-memory index with term-overlap search; the interface is ready to be swapped for Chroma. |
 
-## Execução rápida
+## Quick start
 
 ```bash
 git clone https://github.com/PresetyX/AI-Multi-Agent-System.git
@@ -71,78 +73,77 @@ print(result["active_worker"])  # data_analyst
 print(result["final_answer"])   # Prepared an analysis plan for: Analyze this CSV dataset
 ```
 
-## Testes
+## Tests
 
-17 testes, cerca de 96% de cobertura, rodando sem rede e sem chaves de API:
+17 tests, about 96% coverage, running without network access or API keys:
 
-- fluxo completo do grafo para os dois workers e roteamento pela mensagem mais recente;
-- loop de revisão: nova tentativa sem artefato e parada ao atingir `MAX_REVIEW_LOOPS`;
-- executor de código: sucesso, erro, timeout, código vazio, diretório temporário e
-  isolamento de variáveis de ambiente (uma chave definida no processo pai não chega ao código executado);
-- arquivos: ida e volta dentro do workspace e bloqueio de `../`, `notes/../../` e caminhos absolutos;
-- busca: ranqueamento por sobreposição e indexação apenas de `.py`, `.md`, `.txt` e `.toml`.
+- full graph flow for both workers and routing by the most recent message;
+- review loop: retry when there is no artifact, and stop when `MAX_REVIEW_LOOPS` is reached;
+- code executor: success, error, timeout, empty code, temporary directory and
+  environment-variable isolation (a key set in the parent process does not reach the executed code);
+- files: round trip inside the workspace and blocking of `../`, `notes/../../` and absolute paths;
+- search: ranking by overlap and indexing of `.py`, `.md`, `.txt` and `.toml` only.
 
-O CI (GitHub Actions) roda lint com `ruff` e os testes em Python 3.11 e 3.12.
+CI (GitHub Actions) runs `ruff` lint and the tests on Python 3.11 and 3.12.
 
-## Decisões de design
+## Design decisions
 
-- **Supervisor por palavras-chave hoje, com LLM no roadmap.** O roteamento é determinístico e
-  testável sem chave de API. O limite é que ele só distingue o que as palavras-chave cobrem.
-- **Revisão com teto de tentativas.** O revisor devolve o pedido ao supervisor, mas
-  `route_review` sempre termina quando `MAX_REVIEW_LOOPS` é atingido, então o grafo não entra em
-  loop infinito.
-- **Estado tipado e serializável compartilhado** (`GraphState`): mensagens, worker ativo,
-  artefatos, status e contagem de revisões ficam num único lugar.
-- **Workers devolvem artefatos estruturados** (`engineering` ou `data_analysis`), e o revisor
-  aprova com base na existência do artefato, não em texto solto.
-- **Código gerado roda em subprocesso, em diretório temporário, com timeout e ambiente mínimo.**
-  Só `PATH` e `PYTHONNOUSERSITE` são repassados, para que chaves de API não vazem para o código
-  executado. Isso reduz risco, mas não é um sandbox, e o README diz isso de forma explícita.
-- **`file_ops` restrito ao `WORKSPACE_ROOT`,** bloqueando `../` e caminhos absolutos.
-- **`VectorStore` em memória, acessado só pelo recuperador** (`src/tools/retriever.py`), com a
-  troca por Chroma persistente prevista no roadmap.
+- **Keyword-based supervisor today, LLM on the roadmap.** Routing is deterministic and
+  testable without an API key. The limitation is that it can only tell apart what the keywords cover.
+- **Review with a cap on attempts.** The reviewer sends the request back to the supervisor, but
+  `route_review` always ends when `MAX_REVIEW_LOOPS` is reached, so the graph can't loop forever.
+- **Typed, serializable shared state** (`GraphState`): messages, active worker,
+  artifacts, status and revision count live in a single place.
+- **Workers return structured artifacts** (`engineering` or `data_analysis`), and the reviewer
+  approves based on the existence of the artifact, not on free text.
+- **Generated code runs in a subprocess, in a temporary directory, with a timeout and a minimal environment.**
+  Only `PATH` and `PYTHONNOUSERSITE` are passed through, so that API keys don't leak into the
+  executed code. This reduces risk, but it is not a sandbox, and this README says so explicitly.
+- **`file_ops` restricted to `WORKSPACE_ROOT`,** blocking `../` and absolute paths.
+- **In-memory `VectorStore`, accessed only through the retriever** (`src/tools/retriever.py`), with
+  the swap to a persistent Chroma planned on the roadmap.
 
-## Limitações de segurança
+## Security limitations
 
-O executor de código **não é um sandbox isolado**. Ele reduz riscos (timeout, diretório
-temporário, ambiente sem segredos), mas o processo ainda pode acessar a rede e ler arquivos que
-o usuário do sistema operacional consegue ler. Para código não confiável, rode dentro de um
-container sem rede (`docker run --network none --read-only ...`), gVisor ou Firecracker.
+The code executor **is not an isolated sandbox**. It reduces risk (timeout, temporary
+directory, an environment without secrets), but the process can still access the network and read files that
+the operating system user can read. For untrusted code, run it inside a
+container with no network (`docker run --network none --read-only ...`), gVisor or Firecracker.
 
-## Configuração
+## Configuration
 
-| Variável | Padrão | Uso |
+| Variable | Default | Use |
 |---|---|---|
-| `WORKSPACE_ROOT` | `./workspace` | Pasta única onde as ferramentas de arquivo podem ler e escrever. |
-| `MAX_CODE_SECONDS` | `10` | Timeout do executor de código. |
-| `MAX_REVIEW_LOOPS` | `2` | Máximo de voltas revisor → supervisor. |
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, `AI_MODEL` | vazio / `gpt-4o-mini` | Reservadas para a integração com LLM do roadmap; ainda não são lidas pelos nós. |
-| `RAG_PERSIST_DIRECTORY` | `./.chroma` | Reservada para a troca do índice em memória pelo Chroma. |
+| `WORKSPACE_ROOT` | `./workspace` | The single folder where the file tools may read and write. |
+| `MAX_CODE_SECONDS` | `10` | Code executor timeout. |
+| `MAX_REVIEW_LOOPS` | `2` | Maximum number of reviewer → supervisor round trips. |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, `AI_MODEL` | empty / `gpt-4o-mini` | Reserved for the LLM integration on the roadmap; not read by the nodes yet. |
+| `RAG_PERSIST_DIRECTORY` | `./.chroma` | Reserved for replacing the in-memory index with Chroma. |
 
-## Estrutura
+## Structure
 
 ```
 src/
   agents/   # supervisor, software_engineer, data_analyst, reviewer
   tools/    # execute_python, file_ops, retriever
-  rag/      # VectorStore em memória e indexador de diretórios
-  graph.py  # montagem do StateGraph e roteamento condicional
-  state.py  # GraphState tipado
-tests/      # pytest (grafo, ferramentas, busca)
+  rag/      # in-memory VectorStore and directory indexer
+  graph.py  # StateGraph assembly and conditional routing
+  state.py  # typed GraphState
+tests/      # pytest (graph, tools, search)
 ```
 
 ## Roadmap
 
-- [ ] Supervisor com LLM e saída estruturada (Pydantic) no lugar das palavras-chave.
-- [ ] Workers com tool calling usando `execute_python`, `file_ops` e `retrieve_documents`.
-- [ ] Revisor com critérios de aceitação avaliados por LLM e feedback que volta para o worker.
-- [ ] Trocar o `VectorStore` em memória por Chroma persistente com embeddings.
-- [ ] Executor de código dentro de container sem rede.
+- [ ] LLM-based supervisor with structured output (Pydantic) in place of keywords.
+- [ ] Workers with tool calling using `execute_python`, `file_ops` and `retrieve_documents`.
+- [ ] Reviewer with acceptance criteria evaluated by an LLM and feedback that goes back to the worker.
+- [ ] Replace the in-memory `VectorStore` with a persistent Chroma using embeddings.
+- [ ] Code executor inside a container with no network.
 
-## Histórico de desenvolvimento
+## Development history
 
-Projeto desenvolvido localmente entre 25/08/2026 e 17/11/2026. O histórico de commits foi criado depois, e as datas dos commits foram ajustadas para corresponder ao período em que o trabalho foi realmente feito.
+Developed locally between August 25 and November 17, 2026. The commit history was created afterwards, and the commit dates were adjusted to match the period in which the work was actually done.
 
-## Licença
+## License
 
-MIT. Veja [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
